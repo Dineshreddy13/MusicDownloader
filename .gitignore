@@ -1,0 +1,21 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+.venv/
+env/
+venv/
+
+.vscode/
+
+.idea/
+
+*.env
+
+spotify_token.json
+
+downloads/
+
+.DS_Store
+Thumbs.db
