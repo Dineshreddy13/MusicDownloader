@@ -4,6 +4,7 @@ import re
 from yt_dlp import YoutubeDL
 import time
 import sys
+import configparser
 from TokenManager import SpotifyTokenManager
 from LyricsEmbedor import LyricsEmbedder
 from SongInfo import AudioInspector
@@ -15,12 +16,16 @@ from mutagen.id3 import APIC, TIT2, TPE1, TALB, TCON, TDRC, TRCK, TPE2
 
 
 class MusicDownloader:
-    def __init__(self, save_path="downloads"):
-        self.save_path = save_path
-        os.makedirs(self.save_path, exist_ok=True)
+    def __init__(self):
         load_dotenv()
         self.client_id = os.getenv("SPOTIFY_CLIENT_ID")
         self.client_secret = os.getenv("SPOTIFY_CLIENT_SECRET")
+
+        config = configparser.ConfigParser()
+        config.read("./config.ini")
+        self.save_path = config["DEFAULT"].get("DOWNLOAD_PATH", "downloads")
+        os.makedirs(self.save_path, exist_ok=True)
+
         self.spotify_token = None
         self.spinner = Spinner()
 
