@@ -1,5 +1,5 @@
 import time
-from SongDownload import MusicDownloader
+from components.SongDownload import MusicDownloader
 
 def main():
     songs= []
