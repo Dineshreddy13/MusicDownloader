@@ -106,55 +106,60 @@ class MusicDownloader:
             return None
 
     def downloadAudio(self, url):
-        modified_title = None
-        print("Fetching Audio Title from YouTube...")
         self.spinner.start()
-        with YoutubeDL({'quiet': True}) as ydl:
-            info = ydl.extract_info(url, download=False)  # Get metadata only
-            raw_title = info['title']
-            modified_title = self.modifyTitle(raw_title)
-        self.spinner.stop()
-        if len(modified_title) > 70:
-            choice = input("Title length is too long(>70), do u want to edit (y/n): ")
-            if choice == 'y':
-                print("Title : " + modified_title)
-                modified_title = input("Edit the title : ")
-        
-        metadata = self.fetch_song_metadata(modified_title) if modified_title else {}
-        if not metadata:
-            proceed = input("Proceed without metadata (y/n) : ")
-            if proceed == 'n':
-                sys.exit()
-        cover_image_data = None
-        if metadata and 'cover_image_url' in metadata:
-            cover_image_data = self.fetch_cover_image(metadata["cover_image_url"])
-        if not cover_image_data:
-            proceed = input("Proceed without metadata (y/n) : ")
-            if proceed == 'n':
-                sys.exit()
-        fileName = self.modifyTitle(metadata["title"])
         options = {
             'format': 'bestaudio[ext=m4a]/bestaudio/best', 
-            'outtmpl': os.path.join(self.save_path, f'{fileName}.%(ext)s'),  
+            'outtmpl': os.path.join(self.save_path, 'audio.%(ext)s'),
             'noplaylist': True,
             'logger': QuietLogger(),
             'progress_hooks': [self._progress_hook],
         }
 
         try:
-            self.spinner.start()
             with YoutubeDL(options) as ydl:
-                result = ydl.extract_info(url, download=True)
-                downloaded_file = os.path.join(self.save_path, f"{fileName}.m4a")
-                self.spinner.stop()
-            print("\rDownload completed! File saved in:", downloaded_file)
-            return downloaded_file, metadata, cover_image_data
+                info = ydl.extract_info(url, download=True)
+                print()
+            self.spinner.stop()
+            raw_title = info['title']
+            ext = info.get('ext', 'm4a')
+            old_path = os.path.join(self.save_path, f"audio.{ext}")
+
+            sanitized_title = self.modifyTitle(raw_title)
+            metadata = self.fetch_song_metadata(sanitized_title)
+            if not metadata:
+                proceed = input("Proceed without metadata (y/n): ")
+                if proceed.lower() != 'y':
+                    sys.exit()
+
+            filename = self.modifyTitle(metadata.get('title', sanitized_title))
+            new_path = os.path.join(self.save_path, f"{filename}.{ext}")
+
+            try:
+                if new_path != old_path:
+                    os.rename(old_path, new_path)
+            except Exception as e:
+                print(f"Warning: Could not rename file: {e}")
+                new_path = old_path  # fallback
+
+            cover_image_data = None
+            if metadata and 'cover_image_url' in metadata:
+                cover_image_data = self.fetch_cover_image(metadata['cover_image_url'])
+            if not cover_image_data:
+                proceed = input("Proceed without cover image (y/n): ")
+                if proceed.lower() != 'y':
+                    sys.exit()
+
+            print("\rDownload completed! File saved in:", new_path)
+            return new_path, metadata, cover_image_data
+
         except Exception as e:
+            self.spinner.stop()
             print("An error occurred during downloading:", e)
             return None, None, None
 
+
     def modifyTitle(self,title):
-        return re.sub(r'[<>:"/\\|?*.]', '', title)
+        return re.sub(r'[<>:"/\\|?*]', '', title)
     def _progress_hook(self, d):
         if d['status'] == 'downloading':
             self.spinner.stop()
