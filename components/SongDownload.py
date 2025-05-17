@@ -5,11 +5,11 @@ from yt_dlp import YoutubeDL
 import time
 import sys
 import configparser
-from TokenManager import SpotifyTokenManager
-from LyricsEmbedor import LyricsEmbedder
-from SongInfo import AudioInspector
-from UiTools import Spinner
-from UiTools import QuietLogger
+from components.TokenManager import SpotifyTokenManager
+from components.LyricsEmbedor import LyricsEmbedder
+from components.SongInfo import AudioInspector
+from components.UiTools import Spinner
+from components.UiTools import QuietLogger
 from dotenv import load_dotenv
 from mutagen.mp4 import MP4
 from mutagen.id3 import APIC, TIT2, TPE1, TALB, TCON, TDRC, TRCK, TPE2
@@ -33,6 +33,7 @@ class MusicDownloader:
     def get_spotify_access_token(self):
         try:
             token_manager = SpotifyTokenManager(self.client_id, self.client_secret)
+            self.spinner.stop()
             self.spotify_token = token_manager.getToken();  
             return self.spotify_token
         except Exception as e:
@@ -165,8 +166,8 @@ class MusicDownloader:
             self.spinner.stop()
             print(f"\rDownloading Audio : {d['_percent_str']} | Speed: {d['_speed_str']}", end="")
         elif d['status'] == 'finished':
-            print("\nDownload finished, converting file...")
-            self.spinner.start()
+            print("\nDownload finished, converting file...",end='')
+
 
     def add_metadata_and_coverimage(self, input_file, cover_image_data, metadata=None):
         if not input_file.endswith(".m4a"):
