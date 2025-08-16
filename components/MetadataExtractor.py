@@ -2,6 +2,7 @@ import json
 from urllib.parse import urlparse, parse_qs
 from ytmusicapi import YTMusic
 from openai import OpenAI
+from datetime import date
 
 
 class SongMetadataFetcher:
@@ -32,9 +33,11 @@ class SongMetadataFetcher:
     def fill_missing_with_ai(self, metadata: dict) -> dict:
         """Ask AI to complete missing metadata fields"""
         prompt = f"""
+        You are a meticulous music metadata assistant. Today's date is {date.today()}.
+        Task: Fill ONLY the missing fields for this track's metadata using authoritative, up-to-date sources.
         Some song metadata is missing. 
         Current data: {metadata}
-        Fill in missing fields (album, album_artist, year, genre, track_number, composer) based on music knowledge.
+        Fill in missing fields (album, album_artist, year, genre, track_number, composer) based on up-to-date music sources like spotify, apple music, youtube music.
         Return JSON only.
         """
         response = self.client.chat.completions.create(
