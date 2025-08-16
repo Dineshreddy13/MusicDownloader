@@ -1,0 +1,6 @@
+yt-dlp
+requests
+mutagen
+python-dotenv
+openai
+ytmusicapi
