@@ -120,10 +120,6 @@ class MusicDownloader:
                     audio["trkn"] = [(metadata['track_number'], 0)]  
                 if 'album_artist' in metadata:
                     audio["aART"] = metadata['album_artist']
-                if 'composer' in metadata:
-                    audio["\xa9wrt"] = metadata['composer']
-                if 'disk_number' in metadata:
-                    audio["disk"] = metadata['disk_number']
 
             if cover_image_data:
                 from mutagen.mp4 import MP4Cover
