@@ -11,9 +11,9 @@ def main():
     for i in songs:
         downloader.process(i)
     end = time.time()
-    elapsed = start - end
+    elapsed = end - start
     min = int(elapsed // 60)
     sec = int(elapsed % 60)
-    print("Exection Time: ", min, "minutes", sec, "seconds")
+    print("Elapsed Time: ", min, "min", sec, "sec")
 if __name__ == "__main__":
     main()
