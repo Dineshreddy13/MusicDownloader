@@ -12,8 +12,7 @@ def main():
         downloader.process(i)
     end = time.time()
     elapsed = end - start
-    min = int(elapsed // 60)
-    sec = int(elapsed % 60)
-    print("Elapsed Time: ", min, "min", sec, "sec")
+    elapsed = round(end - start)
+    print("Elapsed time : ", elapsed//60 ,"min", elapsed%60, "sec")
 if __name__ == "__main__":
     main()
