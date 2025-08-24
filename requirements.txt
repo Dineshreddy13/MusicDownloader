@@ -1,7 +1,5 @@
 yt-dlp
 requests
 mutagen
-python-dotenv
 ytmusicapi
 itunespy
-openai
