@@ -1,6 +1,7 @@
 import os
 import concurrent
 import requests
+import time
 import re
 from yt_dlp import YoutubeDL
 import configparser
@@ -8,15 +9,12 @@ from components.SongInfo import AudioInspector
 from components.UiTools import Spinner
 from components.MetadataExtractor import SongMetadataFetcher
 from components.UiTools import QuietLogger
-from dotenv import load_dotenv
 from mutagen.mp4 import MP4
 from mutagen.id3 import APIC, TIT2, TPE1, TALB, TCON, TDRC, TRCK, TPE2
 
 
 class MusicDownloader:
     def __init__(self):
-        load_dotenv()
-        self.open_ai_client = os.getenv("OPEN_AI_KEY")
         config = configparser.ConfigParser()
         config.read("./config.ini")
         self.save_path = config["DEFAULT"].get("DOWNLOAD_PATH", "downloads")
@@ -25,7 +23,7 @@ class MusicDownloader:
 
     def fetch_song_metadata(self, url):
         try:
-            fetcher = SongMetadataFetcher(openai_key = self.open_ai_client)
+            fetcher = SongMetadataFetcher()
             metadata = fetcher.get_complete_metadata(url)
             return metadata
         except Exception as e:
@@ -144,7 +142,10 @@ class MusicDownloader:
             return None
 
     def process(self, video_url):
+        start = time.time()
         downloaded_file, metadata, cover_image_data = self.downloadAudio(video_url)
         if downloaded_file:
             self.add_metadata_and_coverimage(downloaded_file, cover_image_data, metadata=metadata)
-
+        end = time.time()
+        elapsed = round(end - start)
+        print("Elapsed time : ", elapsed//60 ,"min", elapsed%60, "sec")
