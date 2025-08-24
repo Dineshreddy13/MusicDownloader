@@ -1,15 +1,11 @@
-import json
 from urllib.parse import urlparse, parse_qs
 from ytmusicapi import YTMusic
-from openai import OpenAI
-from datetime import date
 import itunespy
 
 
 class SongMetadataFetcher:
-    def __init__(self, openai_key):
+    def __init__(self):
         self.ytmusic = YTMusic()
-        self.client = OpenAI(api_key=openai_key)
 
     def extract_video_id(self, url):
         """Extract videoId from a YouTube Music link"""
@@ -46,33 +42,11 @@ class SongMetadataFetcher:
             print("iTunes lookup failed:", e)
         return metadata
 
-    def fill_missing_with_ai(self, metadata):
-        """Ask AI to complete missing metadata fields"""
-        prompt = f"""
-        You are a meticulous music metadata assistant. Today's date is {date.today()}.
-        Task: Fill ONLY the missing fields for this track's metadata using authoritative, up-to-date sources.
-        Current data: {metadata}
-        Fill in missing fields (album, album_artist, year, genre, track_number).
-        Return JSON only.
-        """
-        response = self.client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"}
-        )
-        return json.loads(response.choices[0].message.content)
-
     def get_complete_metadata(self, url):
-        """Return metadata using YT Music + iTunes + AI"""
+        """Return metadata using YT Music + iTunes"""
         base_metadata = self.fetch_base_metadata(url)
 
-        # Step 1 → iTunes enrichment
+        # Enrich with iTunes
         enriched_metadata = self.fill_with_itunes(base_metadata)
-
-        # Step 2 → Check if anything is still missing
-        missing_fields = [k for k, v in enriched_metadata.items() if v in (None, "", "Unknown", "N/A")]
-        if missing_fields:
-            ai_metadata = self.fill_missing_with_ai(enriched_metadata)
-            enriched_metadata.update(ai_metadata)
 
         return enriched_metadata
