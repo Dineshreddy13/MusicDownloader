@@ -30,69 +30,102 @@ class MusicDownloader:
             return None
 
     def downloadAudio(self, url):
-            self.spinner.start()
-            options = {
-                'format': 'bestaudio[ext=m4a]/bestaudio/best',
-                'outtmpl': os.path.join(self.save_path, 'audio.%(ext)s'),
-                'noplaylist': True,
-                'logger': QuietLogger(),
-                'progress_hooks': [self._progress_hook],
-            }
+        self.spinner.start()
+        base_options = {
+            'format': 'bestaudio[ext=m4a]/bestaudio/best',
+            'outtmpl': os.path.join(self.save_path, '%(id)s.%(ext)s'),
+            'logger': QuietLogger(),
+        }
 
-            metadata = None
-            cover_image_data = None
-            downloaded_file = None
+        downloaded_files = []
+        all_metadata = []
 
-            try:
-                with concurrent.futures.ThreadPoolExecutor() as executor:
-                    metadata_future = executor.submit(self.fetch_song_metadata, url)
+        try:
+            with YoutubeDL(base_options) as ydl:
+                info = ydl.extract_info(url, download=False)  # only structure
 
-                    with YoutubeDL(options) as ydl:
-                        info = ydl.extract_info(url, download=True)
-                        print()
+            # Handle single vs playlist
+            if "entries" in info:
+                entries = info["entries"]
+            else:
+                entries = [info]
 
-                self.spinner.stop()
+            def process_entry(entry):
+                video_url = entry["webpage_url"]
 
-                raw_title = info['title']
-                ext = info.get('ext', 'm4a')
-                old_path = os.path.join(self.save_path, f"audio.{ext}")
+                # Run metadata fetch in parallel
+                with concurrent.futures.ThreadPoolExecutor() as meta_executor:
+                    meta_future = meta_executor.submit(self.fetch_song_metadata, video_url)
 
-                metadata = metadata_future.result(timeout=20)
+                    # Step 2: download this entry
+                    with YoutubeDL(base_options) as ydl:
+                        entry_info = ydl.extract_info(video_url, download=True)
 
-                sanitized_title = self.modifyTitle(raw_title)
-                filename = self.modifyTitle(metadata.get('title', sanitized_title)) if metadata else sanitized_title
-                new_path = os.path.join(self.save_path, f"{filename}.{ext}")
+                    raw_title = entry_info['title']
+                    ext = entry_info.get('ext', 'm4a')
+                    song_id = entry_info['id']
+                    old_path = os.path.join(self.save_path, f"{song_id}.{ext}")
 
-                try:
-                    if new_path != old_path:
-                        os.rename(old_path, new_path)
-                except Exception as e:
-                    print(f"Warning: Could not rename file: {e}")
-                    new_path = old_path  # fallback
+                    # Wait for metadata result (download + metadata now overlap in time)
+                    metadata = None
+                    try:
+                        metadata = meta_future.result(timeout=20)
+                    except Exception as e:
+                        print(f"⚠️ Metadata fetch failed for {video_url}: {e}")
 
-                # Fetch cover in parallel as well
-                if metadata and 'cover_image_url' in metadata:
-                    cover_image_data = self.fetch_cover_image(metadata['cover_image_url'])
+                    # Step 3: sanitize + rename
+                    safe_title = self.modifyTitle(raw_title)
+                    final_name = safe_title
+                    if metadata and 'title' in metadata:
+                        final_name = self.modifyTitle(metadata['title'])
 
-                print("\rDownload completed! File saved in:", new_path)
-                downloaded_file = new_path
+                    new_path = os.path.join(self.save_path, f"{final_name}.{ext}")
 
-            except Exception as e:
-                self.spinner.stop()
-                print("An error occurred during downloading:", e)
+                    try:
+                        if old_path != new_path:
+                            os.rename(old_path, new_path)
+                    except Exception as e:
+                        print(f"Could not rename {old_path} → {new_path}: {e}")
+                        new_path = old_path
 
-            return downloaded_file, metadata, cover_image_data
+                    # Step 4: cover image
+                    cover_image_data = None
+                    if metadata and 'cover_image_url' in metadata:
+                        cover_image_data = self.fetch_cover_image(metadata['cover_image_url'])
+
+                    # Step 5: embed metadata
+                    self.add_metadata_and_coverimage(new_path, cover_image_data, metadata=metadata)
+                    
+                    print("\r\033[92mDownloaded: \033[0m", end="")
+
+                    print(f"\033[94m{metadata['title']}.\033[0m")
+                    return new_path, metadata
+
+            # Step 6: run all songs in parallel
+            if len(entries) > 1:
+                print(f"\rDownloading songs from -> ({info.get('title')})")
+            else:
+                print("\rDownloading Song:")
+            with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+                results = list(executor.map(process_entry, entries))
+
+            for file_path, metadata in results:
+                if file_path:
+                    downloaded_files.append(file_path)
+                    all_metadata.append(metadata)
+            self.spinner.stop()
+
+
+        except Exception as e:
+            self.spinner.stop()
+            print("An error occurred during downloading:", e)
+
+        return downloaded_files, all_metadata
+
 
     def modifyTitle(self,title):
         return re.sub(r'[<>:"/\\|?*]', '', title)
     
-    def _progress_hook(self, d):
-        if d['status'] == 'downloading':
-            self.spinner.stop()
-            print(f"\rDownloading Audio : {d['_percent_str']} | Speed: {d['_speed_str']}", end="")
-        elif d['status'] == 'finished':
-            print("\nDownload finished, converting file...",end='')
-
 
     def add_metadata_and_coverimage(self, input_file, cover_image_data, metadata=None):
         if not input_file.endswith(".m4a"):
@@ -125,8 +158,6 @@ class MusicDownloader:
 
             audio.save()
 
-            AudioInspector(input_file).display_properties()
-            print(f"✅ Metadata and cover image embedded successfully : {input_file}")
         except Exception as e:
             print("Error updating the audio file with metadata and cover image :", e)
 
@@ -135,7 +166,6 @@ class MusicDownloader:
         try:
             response = requests.get(url, stream=True)
             response.raise_for_status()
-            print("Cover image fetched successfully.")
             return response.content
         except Exception as e:
             print(f"Failed to fetch cover image: {e}")
@@ -143,9 +173,17 @@ class MusicDownloader:
 
     def process(self, video_url):
         start = time.time()
-        downloaded_file, metadata, cover_image_data = self.downloadAudio(video_url)
-        if downloaded_file:
-            self.add_metadata_and_coverimage(downloaded_file, cover_image_data, metadata=metadata)
+        downloaded_files, all_metadata = self.downloadAudio(video_url)
+
+        if downloaded_files:
+            print("\r\nDownload Summary:")
+            for i, f in enumerate(downloaded_files, 1):
+                meta_title = all_metadata[i-1].get("title") if all_metadata[i-1] else None
+                display_name = meta_title if meta_title else os.path.basename(f)
+                print(f"{i:02d}. {display_name} -> {f}")
+                AudioInspector(f).display_properties()
+
         end = time.time()
         elapsed = round(end - start)
         print("Elapsed time : ", elapsed//60 ,"min", elapsed%60, "sec")
+
