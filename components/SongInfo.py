@@ -36,9 +36,10 @@ class AudioInspector:
         if not self.properties:
             self.analyze()
 
-        print("🎧 Audio Details :")
-        print("Codec          :", self.properties.get('codec', 'Unknown'))
-        print("Bitrate        :", self.properties.get('bitrate', 'Unknown'), "kb/s")
-        print("Channels       :", self.properties.get('channels', 'Unknown'))
-        print("Sampling Rate  :", self.properties.get('sampling_rate', 'Unknown'), "Hz")
-        print("Bit Depth      :", self.properties.get('bit_depth', 'N/A'))
+        # print("🎧 Audio Details :")
+        # print("Codec          :", self.properties.get('codec', 'Unknown'))
+        print("Bitrate :", self.properties.get('bitrate', 'Unknown'), "kb/s", end=" | ")
+        print("Channels :", self.properties.get('channels', 'Unknown'), end=" | ")
+        print("Sampling Rate :", self.properties.get('sampling_rate', 'Unknown'), "Hz", end=" | ")
+        print("Bit Depth :", self.properties.get('bit_depth', 'N/A'), end="")
+        print(" | ")
