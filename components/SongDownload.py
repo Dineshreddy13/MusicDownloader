@@ -10,8 +10,7 @@ from components.UiTools import Spinner
 from components.MetadataExtractor import SongMetadataFetcher
 from components.UiTools import QuietLogger
 from mutagen.mp4 import MP4
-from mutagen.id3 import APIC, TIT2, TPE1, TALB, TCON, TDRC, TRCK, TPE2
-
+import imageio_ffmpeg as ffmpeg
 
 class MusicDownloader:
     def __init__(self):
@@ -19,6 +18,7 @@ class MusicDownloader:
         config.read("./config.ini")
         self.save_path = config["DEFAULT"].get("DOWNLOAD_PATH", "downloads")
         os.makedirs(self.save_path, exist_ok=True)
+        self.ffmpeg_path = ffmpeg.get_ffmpeg_exe()
         self.spinner = Spinner()
 
     def fetch_song_metadata(self, url):
@@ -35,6 +35,7 @@ class MusicDownloader:
                 'format': 'bestaudio[ext=m4a]/bestaudio/best',
                 'outtmpl': os.path.join(self.save_path, '%(id)s.%(ext)s'),
                 'noplaylist': True,
+                'ffmpeg_location': self.ffmpeg_path,
                 'logger': QuietLogger(),
                 'progress_hooks': [self._progress_hook],
             }
@@ -75,7 +76,7 @@ class MusicDownloader:
                 if metadata and 'cover_image_url' in metadata:
                     cover_image_data = self.fetch_cover_image(metadata['cover_image_url'])
 
-                print("\rDownload completed! File saved in:", new_path)
+                print("\rDownload completed! File saved in -> ", new_path)
                 downloaded_file = new_path
 
 
@@ -128,7 +129,7 @@ class MusicDownloader:
             audio.save()
 
             AudioInspector(input_file).display_properties()
-            print(f"✅ Metadata and cover image embedded successfully : {input_file}")
+            print(f"✅ Metadata and cover image embedded successfully -> {input_file}")
         except Exception as e:
             print("Error updating the audio file with metadata and cover image :", e)
 
