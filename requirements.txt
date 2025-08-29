@@ -3,3 +3,4 @@ requests
 mutagen
 ytmusicapi
 itunespy
+imageio-ffmpeg
