@@ -33,7 +33,7 @@ class MusicDownloader:
             self.spinner.start()
             options = {
                 'format': 'bestaudio[ext=m4a]/bestaudio/best',
-                'outtmpl': os.path.join(self.save_path, 'audio.%(ext)s'),
+                'outtmpl': os.path.join(self.save_path, '%(id)s.%(ext)s'),
                 'noplaylist': True,
                 'logger': QuietLogger(),
                 'progress_hooks': [self._progress_hook],
@@ -55,7 +55,8 @@ class MusicDownloader:
 
                 raw_title = info['title']
                 ext = info.get('ext', 'm4a')
-                old_path = os.path.join(self.save_path, f"audio.{ext}")
+                song_id = info['id']
+                old_path = os.path.join(self.save_path, f"{song_id}.{ext}")
 
                 metadata = metadata_future.result(timeout=20)
 
